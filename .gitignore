@@ -1,0 +1,6 @@
+/build/
+/extlibs/
+/extsrc/**/*.zip
+/extsrc/**/*.gz
+/extsrc/**/*.7z
+/extsrc/**/*.bz2
