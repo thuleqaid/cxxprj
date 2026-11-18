@@ -6,6 +6,7 @@
   - 编译库文件的批处理文件（`buildext*.bat`）
   - 使用库文件的CMakeLists设置（`extlibs.cmake`）
 - `extlibs`：库文件的安装路径
+  - `doc`：库文件的文档
   - `include`：头文件库的文件
   - `x86`：编译32位程序使用的外部库/预编译库（含头文件）
   - `x64`：编译64位程序使用的外部库/预编译库（含头文件）
@@ -14,15 +15,16 @@
 - `modules/xxx/inc`：`xxx`模块的私有头文件
 - `modules/xxx/src`：`xxx`模块的实现文件
 - `tests/xxx`：`xxx`模块的`GoogleTest`测试用例
+- `tools/mkdocs2mdbook`：将MkDocs工程转换成mdBook工程
 
 # 工具
 ## 必备
 - [MinGW-w64](https://winlibs.com)：编译器，带CMake，32位和64位分别下载（选择UCRT运行时，不带LLVM/Clang的版本）
+- [mdBook](https://github.com/rust-lang/mdBook/releases/tag/v0.5.4)：生成某些库的文档
+- [sed](https://github.com/uutils/sed/releases/tag/0.3.0)：Rust版本sed工具
 
 ## 可选
 - [VS Code](https://code.visualstudio.com/download)：代码编辑器
-- [mdBook](https://github.com/rust-lang/mdBook/releases/tag/v0.5.4)：生成某些库的文档
-- [sed](https://github.com/uutils/sed/releases/tag/0.3.0)：Rust版本sed工具
 
 # 库
 ## 头文件库
@@ -32,8 +34,9 @@
 - [inja](https://github.com/pantor/inja/releases/tag/v3.5.0)：类似`Python`中[Jinja](https://palletsprojects.com/projects/jinja/)的模板库，依赖`nlohmann/json`。
 - [spdlog](https://github.com/gabime/spdlog/releases/tag/v1.17.0)：Log库。
 - [TinyFSM](https://digint.ch/tinyfsm/download.html)：状态机。
-- [doctest](https://github.com/doctest/doctest/releases/tag/v2.5.3)：测试框架，不支持Mock，需要编译一次生成完整的头文件，使用时仅头文件。
+- [doctest](https://github.com/doctest/doctest/releases/tag/v2.5.3)：测试框架，不支持Mock。
 - [Fake Function Framework](https://github.com/meekrosoft/fff/releases/tag/v1.1)：单元测试时，定义依赖的外部函数的桩函数。
+- [fkYAML](https://github.com/fktn-k/fkYAML/releases/tag/v0.5.0)：YAML解析库。（`tools/mkdocs2mdbook`依赖于这个库，这个库的文档转换又依赖于`tools/mkdocs2mdbook`，如果需要文档的话，生成2次就行。。。）
 
 ## 集成模块
 需要补足一些通用接口函数的实现或者其它原因不能独立作为lib库使用，因此要集成到代码中一起编译。

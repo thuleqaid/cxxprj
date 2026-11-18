@@ -4,3 +4,4 @@
 /extsrc/**/*.gz
 /extsrc/**/*.7z
 /extsrc/**/*.bz2
+/tools/**/*.exe

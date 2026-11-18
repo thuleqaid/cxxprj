@@ -12,4 +12,5 @@ REM build 32bit library
 call %MING32DIR%\mingwvars.bat
 set ROOT_PATH_ARCH=%ROOT_PATH%/x86
 call extsrc\buildext.bat
+cd extsrc
 set ROOT_PATH=
