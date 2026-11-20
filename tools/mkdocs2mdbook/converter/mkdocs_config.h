@@ -22,6 +22,7 @@ struct MkDocsConfig {
     std::string site_description;
     std::string language = "en";
     std::string docs_dir = "docs";
+    std::vector<std::string> snippet_base_paths; // Base paths configured for pymdownx.snippets
     std::vector<NavItem> nav;
     bool has_nav = false;
 };

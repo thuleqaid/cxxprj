@@ -181,6 +181,40 @@ bool parse_mkdocs_string(const std::string& yaml_content, MkDocsConfig& config, 
             }
         }
 
+        if (root.contains("markdown_extensions")) {
+            const auto& exts = root["markdown_extensions"];
+            auto parse_snippet_ext = [&](const fkyaml::node& ext_node) {
+                if (ext_node.is_mapping()) {
+                    for (auto it = ext_node.begin(); it != ext_node.end(); ++it) {
+                        std::string name = it.key().get_value<std::string>();
+                        if (name.find("snippets") != std::string::npos) {
+                            const auto& val = it.value();
+                            if (val.is_mapping() && val.contains("base_path")) {
+                                const auto& bp = val["base_path"];
+                                if (bp.is_string()) {
+                                    config.snippet_base_paths.push_back(bp.get_value<std::string>());
+                                } else if (bp.is_sequence()) {
+                                    for (const auto& item : bp) {
+                                        if (item.is_string()) {
+                                            config.snippet_base_paths.push_back(item.get_value<std::string>());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (exts.is_sequence()) {
+                for (const auto& item : exts) {
+                    parse_snippet_ext(item);
+                }
+            } else if (exts.is_mapping()) {
+                parse_snippet_ext(exts);
+            }
+        }
+
         if (root.contains("nav") && root["nav"].is_sequence()) {
             config.has_nav = true;
             config.nav.clear();

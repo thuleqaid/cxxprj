@@ -11,6 +11,8 @@ int main(int argc, char *argv[])
         ("i,input", "mkdocs dir", cxxopts::value<std::string>())
         ("o,output", "mdbook dir", cxxopts::value<std::string>())
         ("a,alerts", "Convert mkdocs admonitions to GitHub-style alerts", cxxopts::value<bool>()->default_value("false"))
+        ("s,snippets", "Expand mkdocs snippets (--8<--)", cxxopts::value<bool>()->default_value("true"))
+        ("e,emojis", "Convert mkdocs emoji shortcodes (:memo:) to Unicode emojis", cxxopts::value<bool>()->default_value("true"))
         ("h,help", "Print usage")
         ;
     auto result = options.parse(argc, argv);
@@ -24,6 +26,8 @@ int main(int argc, char *argv[])
         {
             converter::ConvertOptions opts;
             opts.convert_alerts = result.count("alerts") ? result["alerts"].as<bool>() : false;
+            opts.expand_snippets = result.count("snippets") ? result["snippets"].as<bool>() : true;
+            opts.convert_emojis = result.count("emojis") ? result["emojis"].as<bool>() : true;
             convert(result["input"].as<std::string>(), result["output"].as<std::string>(), opts);
         } else {
             std::cout << options.help() << std::endl;
@@ -38,6 +42,8 @@ static void convert(std::string indir, std::string outdir, const converter::Conv
     std::cout << "Input directory : " << indir << std::endl;
     std::cout << "Output directory: " << outdir << std::endl;
     std::cout << "Convert alerts  : " << (options.convert_alerts ? "enabled" : "disabled") << std::endl;
+    std::cout << "Expand snippets : " << (options.expand_snippets ? "enabled" : "disabled") << std::endl;
+    std::cout << "Convert emojis  : " << (options.convert_emojis ? "enabled" : "disabled") << std::endl;
 
     auto result = converter::convert_project(indir, outdir, options);
     if (!result.success) {

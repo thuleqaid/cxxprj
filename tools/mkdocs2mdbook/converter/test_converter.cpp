@@ -130,6 +130,176 @@ TEST_CASE("Markdown Admonitions Conversion") {
     }
 }
 
+TEST_CASE("Markdown Snippets Expansion") {
+    auto temp_dir = std::filesystem::temp_directory_path() / "test_snippets";
+    std::filesystem::remove_all(temp_dir);
+    std::filesystem::create_directories(temp_dir / "examples");
+    std::filesystem::create_directories(temp_dir / "docs");
+
+    // Create a sample source file with license header and sections
+    std::filesystem::path code_file = temp_dir / "examples" / "sample.cpp";
+    {
+        std::ofstream ofs(code_file);
+        ofs << "// Line 1: Header\n";
+        ofs << "// Line 2: License\n";
+        ofs << "#include <iostream>\n";
+        ofs << "// --8<-- [start:main_func]\n";
+        ofs << "int main() {\n";
+        ofs << "    std::cout << \"Hello!\" << std::endl;\n";
+        ofs << "    return 0;\n";
+        ofs << "}\n";
+        ofs << "// --8<-- [end:main_func]\n";
+        ofs << "// Line 10: Trailing comment\n";
+    }
+
+    SnippetOptions opts;
+    opts.base_paths.push_back(temp_dir / "examples");
+    opts.docs_root = temp_dir / "docs";
+    opts.project_root = temp_dir;
+    opts.dedent_subsections = true;
+
+    SUBCASE("Include from line 3 to end (:3)") {
+        std::string md = 
+            "```cpp\n"
+            "--8<-- \"sample.cpp:3\"\n"
+            "```\n";
+        
+        std::string res = expand_markdown_snippets(md, temp_dir / "docs" / "page.md", opts);
+        CHECK(res.find("// Line 1: Header") == std::string::npos);
+        CHECK(res.find("#include <iostream>") != std::string::npos);
+        CHECK(res.find("int main() {") != std::string::npos);
+        CHECK(res.find("// Line 10: Trailing comment") != std::string::npos);
+    }
+
+    SUBCASE("Include line range with indent preservation") {
+        std::string md = 
+            "    ```cpp\n"
+            "    --8<-- \"sample.cpp:5:8\"\n"
+            "    ```\n";
+
+        std::string res = expand_markdown_snippets(md, temp_dir / "docs" / "page.md", opts);
+        CHECK(res.find("    int main() {") != std::string::npos);
+        CHECK(res.find("        std::cout << \"Hello!\" << std::endl;") != std::string::npos);
+        CHECK(res.find("        return 0;") != std::string::npos);
+        CHECK(res.find("    }") != std::string::npos);
+        CHECK(res.find("#include <iostream>") == std::string::npos);
+    }
+
+    SUBCASE("Include section") {
+        std::string md = 
+            "```cpp\n"
+            "--8<-- \"sample.cpp:main_func\"\n"
+            "```\n";
+
+        std::string res = expand_markdown_snippets(md, temp_dir / "docs" / "page.md", opts);
+        CHECK(res.find("#include <iostream>") == std::string::npos);
+        CHECK(res.find("int main() {") != std::string::npos);
+        CHECK(res.find("    return 0;") != std::string::npos);
+        CHECK(res.find("// Line 10: Trailing comment") == std::string::npos);
+        CHECK(res.find("main_func") == std::string::npos); // Section marker is stripped
+    }
+
+    SUBCASE("Escaped snippet marker") {
+        std::string md = 
+            ";--8<-- \"sample.cpp\"\n";
+
+        std::string res = expand_markdown_snippets(md, temp_dir / "docs" / "page.md", opts);
+        CHECK(res.find("--8<-- \"sample.cpp\"") != std::string::npos);
+        CHECK(res.find("#include") == std::string::npos);
+    }
+
+    SUBCASE("Snippet inside admonition with alert conversion") {
+        std::string md = 
+            "???+ example \"Example\"\n"
+            "\n"
+            "    ```cpp\n"
+            "    --8<-- \"sample.cpp:5:7\"\n"
+            "    ```\n";
+
+        std::string expanded = expand_markdown_snippets(md, temp_dir / "docs" / "page.md", opts);
+        std::string alert = convert_admonitions_to_github_alerts(expanded);
+
+        CHECK(alert.find("> [!NOTE]") != std::string::npos);
+        CHECK(alert.find("> **Example**") != std::string::npos);
+        CHECK(alert.find("> ```cpp") != std::string::npos);
+        CHECK(alert.find("> int main() {") != std::string::npos);
+        CHECK(alert.find(">     std::cout << \"Hello!\" << std::endl;") != std::string::npos);
+    }
+
+    std::filesystem::remove_all(temp_dir);
+}
+
+TEST_CASE("MkDocs YAML Parsing - pymdownx.snippets") {
+    std::string yaml_content = 
+        "site_name: Snippet Config Test\n"
+        "markdown_extensions:\n"
+        "  - admonition\n"
+        "  - pymdownx.snippets:\n"
+        "      base_path:\n"
+        "        - ../examples\n"
+        "        - snippets\n"
+        "      check_paths: true\n";
+
+    MkDocsConfig config;
+    std::string err;
+    bool ok = parse_mkdocs_string(yaml_content, config, err);
+    CHECK(ok);
+    CHECK(config.snippet_base_paths.size() == 2);
+    CHECK(config.snippet_base_paths[0] == "../examples");
+    CHECK(config.snippet_base_paths[1] == "snippets");
+}
+
+TEST_CASE("Markdown Emoji Conversion") {
+    SUBCASE("Common emoji shortcodes") {
+        std::string md = "### :memo: **Well Documented** and :rocket: fast!";
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res == "### \xf0\x9f\x93\x9d **Well Documented** and \xf0\x9f\x9a\x80 fast!\n");
+    }
+
+    SUBCASE("Modifiers and aliases") {
+        std::string md = ":+1: :-1: :sparkles: :boom: :people_holding_hands:";
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res.find("\xf0\x9f\x91\x8d") != std::string::npos); // +1 👍
+        CHECK(res.find("\xf0\x9f\x91\x8e") != std::string::npos); // -1 👎
+        CHECK(res.find("\xe2\x9c\xa8") != std::string::npos);     // sparkles ✨
+        CHECK(res.find("\xf0\x9f\x92\xa5") != std::string::npos); // boom 💥
+    }
+
+    SUBCASE("Inline code protection") {
+        std::string md = "Use `:memo:` as the shortcode for :memo: here.";
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res.find("`:memo:`") != std::string::npos);
+        CHECK(res.find("\xf0\x9f\x93\x9d") != std::string::npos);
+    }
+
+    SUBCASE("Fenced code block protection") {
+        std::string md = 
+            "# Title\n\n"
+            "```cpp\n"
+            "// Do not replace :memo: or :rocket:\n"
+            "fkyaml::node_t::SEQUENCE\n"
+            "```\n\n"
+            ":memo: outside code block.\n";
+
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res.find("// Do not replace :memo: or :rocket:") != std::string::npos);
+        CHECK(res.find("fkyaml::node_t::SEQUENCE") != std::string::npos);
+        CHECK(res.find("\xf0\x9f\x93\x9d outside code block.") != std::string::npos);
+    }
+
+    SUBCASE("C++ double colons in normal text") {
+        std::string md = "Refer to `fkyaml::node_t::SEQUENCE` and fkyaml::node_t::SEQUENCE.";
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res == "Refer to `fkyaml::node_t::SEQUENCE` and fkyaml::node_t::SEQUENCE.\n");
+    }
+
+    SUBCASE("Non-existent shortcode") {
+        std::string md = "This is :not_an_actual_emoji_shortcode: text.";
+        std::string res = replace_markdown_emojis(md);
+        CHECK(res == "This is :not_an_actual_emoji_shortcode: text.\n");
+    }
+}
+
 TEST_CASE("End-to-End convert_project") {
     auto temp_dir = std::filesystem::temp_directory_path() / "test_mkdocs2mdbook";
     auto in_dir = temp_dir / "mkdocs_in";
@@ -138,20 +308,30 @@ TEST_CASE("End-to-End convert_project") {
 
     std::filesystem::remove_all(temp_dir);
     std::filesystem::create_directories(in_dir / "docs" / "sub");
+    std::filesystem::create_directories(in_dir / "examples");
+
+    // Write a snippet file in examples/code.cpp
+    std::ofstream code_ofs(in_dir / "examples" / "code.cpp");
+    code_ofs << "// Header line\n";
+    code_ofs << "const int answer = 42;\n";
+    code_ofs.close();
 
     // Write mkdocs.yml
     std::ofstream yml(in_dir / "mkdocs.yml");
     yml << "site_name: E2E Test Book\n";
     yml << "site_author: Test Author\n";
+    yml << "markdown_extensions:\n";
+    yml << "  - pymdownx.snippets:\n";
+    yml << "      base_path: examples\n";
     yml << "nav:\n";
     yml << "  - Home: index.md\n";
     yml << "  - Sub Chapter:\n";
     yml << "      - Page One: sub/page1.md\n";
     yml.close();
 
-    // Write docs/index.md
+    // Write docs/index.md with a snippet
     std::ofstream idx(in_dir / "docs" / "index.md");
-    idx << "# Welcome\n\nHello world!\n";
+    idx << "# Welcome\n\n```cpp\n--8<-- \"code.cpp:2\"\n```\n";
     idx.close();
 
     // Write docs/sub/page1.md with an admonition
@@ -179,7 +359,16 @@ TEST_CASE("End-to-End convert_project") {
         CHECK(sum_str.find("- [Home](index.md)") != std::string::npos);
         CHECK(sum_str.find("- [Page One](sub/page1.md)") != std::string::npos);
 
-        // Verify verbatim content preserved
+        // Verify snippet expansion in index.md
+        std::ifstream idx_res(out_dir_verbatim / "src" / "index.md");
+        std::stringstream idx_ss;
+        idx_ss << idx_res.rdbuf();
+        std::string idx_content = idx_ss.str();
+        CHECK(idx_content.find("const int answer = 42;") != std::string::npos);
+        CHECK(idx_content.find("// Header line") == std::string::npos);
+        CHECK(idx_content.find("--8<--") == std::string::npos);
+
+        // Verify verbatim content preserved for alerts
         std::ifstream p1_res(out_dir_verbatim / "src" / "sub" / "page1.md");
         std::stringstream p1_ss;
         p1_ss << p1_res.rdbuf();

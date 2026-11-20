@@ -66,9 +66,26 @@ ConvertResult convert_project(const std::filesystem::path& indir,
     }
     result.converted_chapters = chapter_count;
 
-    // Migrate content files (and apply alert conversion if requested)
+    // Prepare snippet options
+    SnippetOptions snippet_opts;
+    snippet_opts.docs_root = docs_root;
+    snippet_opts.project_root = indir;
+    snippet_opts.dedent_subsections = true;
+
+    for (const auto& bp : config.snippet_base_paths) {
+        std::filesystem::path p(bp);
+        if (p.is_relative()) {
+            snippet_opts.base_paths.push_back((indir / p).lexically_normal());
+        } else {
+            snippet_opts.base_paths.push_back(p);
+        }
+    }
+    snippet_opts.base_paths.push_back(docs_root);
+    snippet_opts.base_paths.push_back(indir);
+
+    // Migrate content files (and apply snippet expansion / alert conversion if requested)
     size_t file_count = 0;
-    if (!migrate_content(docs_root, outdir / "src", options.convert_alerts, file_count, err)) {
+    if (!migrate_content(docs_root, outdir / "src", options, snippet_opts, file_count, err)) {
         result.error_message = err;
         return result;
     }
