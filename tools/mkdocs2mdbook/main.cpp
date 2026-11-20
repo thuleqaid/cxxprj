@@ -1,6 +1,6 @@
 #include <iostream>
 #include "cxxopts/cxxopts.hpp"
-#include "converter.h"
+#include "converter/converter.h"
 
 static void convert(std::string indir, std::string outdir, const converter::ConvertOptions& options);
 

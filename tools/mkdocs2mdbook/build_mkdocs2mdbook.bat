@@ -1,7 +1,7 @@
 @echo off
 call ..\..\config_mingw.bat
 call %MING32DIR%\mingwvars.bat
-set SOURCES=converter.cpp markdown_processor.cpp mdbook_generator.cpp mkdocs_parser.cpp test_converter.cpp
+set SOURCES=converter/*.cpp
 g++ -std=c++17 -DTEST_MODE -O2 -I../../extlibs/include -o "%~dp0test_converter.exe" -static-libgcc -static-libstdc++ -static %SOURCES%
 if %errorlevel% equ 0 (
     echo Successfully built test_converter.exe
