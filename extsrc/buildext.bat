@@ -32,35 +32,6 @@ if exist %srcpath% (
   echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
 )
 
-set srcpath=extsrc\header\json-3.12.0
-if exist %srcpath% (
-  if not exist "%ROOT_PATH%\include\nlohmann" mkdir "%ROOT_PATH%\include\nlohmann"
-  xcopy /S /I /Y "%srcpath%\single_include\nlohmann\*.hpp" "%ROOT_PATH%\include\nlohmann\"
-  if exist %mkdocs2mdbook% (
-    %mkdocs2mdbook% -i %srcpath%\docs\mkdocs -o %srcpath%\docs\mdbook -a
-    pushd %cd%
-    cd %srcpath%\docs\mdbook
-    mdbook build
-    popd
-    xcopy /S /I /Y "%srcpath%\docs\mdbook\book" "%ROOT_PATH%\doc\nlohmann"
-  )
-) else (
-  echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
-)
-
-set srcpath=extsrc\header\inja-3.5.0
-if exist %srcpath% (
-  pushd %CD%
-  cd "%srcpath%\doc"
-  doxygen
-  popd
-  xcopy /S /I /Y "%srcpath%\doc\html" "%ROOT_PATH%\doc\inja"
-  if not exist "%ROOT_PATH%\include\inja" mkdir "%ROOT_PATH%\include\inja"
-  copy /Y "%srcpath%\single_include\inja\inja.hpp" "%ROOT_PATH%\include\inja\inja.hpp"
-) else (
-  echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
-)
-
 set srcpath=extsrc\header\spdlog-1.17.0
 if exist %srcpath% (
   if not exist "%ROOT_PATH%\include\spdlog" mkdir "%ROOT_PATH%\include\spdlog"
@@ -84,6 +55,9 @@ if exist %srcpath% (
 set srcpath=extsrc\header\fkYAML-0.5.0
 if exist %srcpath% (
   xcopy /S /I /Y "%srcpath%\single_include\fkYAML" "%ROOT_PATH%\include\fkYAML"
+  if not exist %mkdocs2mdbook% (
+    call tools\mkdocs2mdbook\build_mkdocs2mdbook.bat
+  )
   if exist %mkdocs2mdbook% (
     %mkdocs2mdbook% -i %srcpath%\docs -o %srcpath%\mdbook -a
     pushd %cd%
@@ -92,6 +66,38 @@ if exist %srcpath% (
     popd
     xcopy /S /I /Y "%srcpath%\mdbook\book" "%ROOT_PATH%\doc\fkYAML"
   )
+) else (
+  echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
+)
+
+set srcpath=extsrc\header\json-3.12.0
+if exist %srcpath% (
+  if not exist "%ROOT_PATH%\include\nlohmann" mkdir "%ROOT_PATH%\include\nlohmann"
+  xcopy /S /I /Y "%srcpath%\single_include\nlohmann\*.hpp" "%ROOT_PATH%\include\nlohmann\"
+  if not exist %mkdocs2mdbook% (
+    call tools\mkdocs2mdbook\build_mkdocs2mdbook.bat
+  )
+  if exist %mkdocs2mdbook% (
+    %mkdocs2mdbook% -i %srcpath%\docs\mkdocs -o %srcpath%\docs\mdbook -a
+    pushd %cd%
+    cd %srcpath%\docs\mdbook
+    mdbook build
+    popd
+    xcopy /S /I /Y "%srcpath%\docs\mdbook\book" "%ROOT_PATH%\doc\nlohmann"
+  )
+) else (
+  echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
+)
+
+set srcpath=extsrc\header\inja-3.5.0
+if exist %srcpath% (
+  pushd %CD%
+  cd "%srcpath%\doc"
+  doxygen
+  popd
+  xcopy /S /I /Y "%srcpath%\doc\html" "%ROOT_PATH%\doc\inja"
+  if not exist "%ROOT_PATH%\include\inja" mkdir "%ROOT_PATH%\include\inja"
+  copy /Y "%srcpath%\single_include\inja\inja.hpp" "%ROOT_PATH%\include\inja\inja.hpp"
 ) else (
   echo %ERROR_COLOR%Not found: %srcpath%%NORMAL_COLOR%
 )
